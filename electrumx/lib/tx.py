@@ -37,7 +37,7 @@ from electrumx.lib.util import (
     unpack_le_int32_from, unpack_le_int64_from, unpack_le_uint16_from,
     unpack_be_uint16_from,
     unpack_le_uint32_from, unpack_le_uint64_from, pack_le_int32, pack_varint,
-    pack_le_uint32, pack_le_int64, pack_varbytes,
+    pack_le_uint16, pack_le_uint32, pack_le_int64, pack_varbytes,
 )
 
 ZERO = bytes(32)
@@ -304,6 +304,51 @@ class DeserializerSegWit(Deserializer):
     def read_tx_and_vsize(self):
         tx, _tx_hash, vsize = self._read_tx_parts()
         return tx, vsize
+
+
+class TxPIVX:
+    '''Class representing a PIVX transaction.'''
+    __slots__ = 'version', "txtype", 'inputs', 'outputs', 'locktime'
+    version: int
+    txtype: int
+    inputs: Sequence['TxInput']
+    outputs: Sequence['TxOutput']
+    locktime: int
+
+    def serialize(self):
+        return b''.join((
+            pack_le_uint16(self.version),
+            pack_le_uint16(self.txtype),
+            pack_varint(len(self.inputs)),
+            b''.join(tx_in.serialize() for tx_in in self.inputs),
+            pack_varint(len(self.outputs)),
+            b''.join(tx_out.serialize() for tx_out in self.outputs),
+            pack_le_uint32(self.locktime)
+        ))
+
+class DeserializerPIVX(Deserializer):
+    def read_tx(self):
+        version = self._read_le_uint16()
+        txtype = self._read_le_uint16()
+
+        base_tx = TxPIVX(
+            version,
+            txtype,
+            self._read_inputs(),    # inputs
+            self._read_outputs(),   # outputs
+            self._read_le_uint32()  # locktime
+        )
+
+        if version >= 3: # >= sapling
+            self.cursor += 8  # valueBalance
+            shielded_spend_size = self._read_varint()
+            self.cursor += shielded_spend_size * 384  # vShieldedSpend
+            shielded_output_size = self._read_varint()
+            self.cursor += shielded_output_size * 948  # vShieldedOutput
+            self.cursor += 64  # bindingSig
+            self.cursor += 2 # extraPayload
+
+        return base_tx
 
 
 class DeserializerAuxPow(Deserializer):

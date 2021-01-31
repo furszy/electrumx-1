@@ -2733,11 +2733,13 @@ class Pivx(Coin):
     P2PKH_VERBYTE = bytes.fromhex("1e")
     P2SH_VERBYTE = bytes.fromhex("0d")
     WIF_BYTE = bytes.fromhex("d4")
+    DESERIALIZER = lib_tx.DeserializerPIVX
     TX_COUNT_HEIGHT = 569399
     TX_COUNT = 2157510
     TX_PER_BLOCK = 1
     STATIC_BLOCK_HEADERS = False
     RPC_PORT = 51470
+    REORG_LIMIT = 100
     EXPANDED_HEADER = 112
     ZEROCOIN_START_HEIGHT = 863787
     ZEROCOIN_END_HEIGHT = 2153200
